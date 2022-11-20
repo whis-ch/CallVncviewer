@@ -7,7 +7,6 @@ namespace VncMiddleware
         public RemoteControl()
         {
             InitializeComponent();
-            this.Visible
         }
     }
 }
