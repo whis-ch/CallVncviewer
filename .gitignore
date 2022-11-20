@@ -94,3 +94,7 @@ addon/ms-logon/logging/x64/
 /uvnc_settings2/Backup/uvnc_settings_w2k.sln
 /uvnc_settings2/UpgradeLog.htm
 /vncviewer/release_viewer/config.ini
+/RemoteViewer/bin
+/RemoteViewer/obj
+/VncMiddleware/bin
+/VncMiddleware/obj
