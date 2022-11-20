@@ -1,0 +1,204 @@
+#include "stdhdrs.h"
+#include "Snapshot.h"
+#include "vncviewer.h"
+#include <Windows.h>
+#include <string>
+#include <ShlObj.h>
+#include <iostream>
+#include <sstream>
+#include "common/win32_helpers.h"
+#include <gdiplus.h>
+
+#pragma comment( lib, "gdiplus" )
+
+static int CALLBACK BrowseCallbackProc(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+
+    if(uMsg == BFFM_INITIALIZED)
+    {
+        std::string tmp = (const char *) lpData;
+        std::cout << "path: " << tmp << std::endl;
+        SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+    }
+
+    return 0;
+}
+
+TCHAR * BrowseFolder(TCHAR * saved_path, HWND hwnd)
+{
+    TCHAR path[MAX_PATH];
+
+    const char * path_param = saved_path;
+
+    BROWSEINFO bi = { 0 };
+    bi.lpszTitle  = ("Browse for folder...");
+    bi.ulFlags    = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    bi.lpfn       = BrowseCallbackProc;
+    bi.lParam     = (LPARAM) path_param;
+	bi.hwndOwner = hwnd;
+
+    LPITEMIDLIST pidl = SHBrowseForFolder ( &bi );
+
+    if ( pidl != 0 )
+    {
+        //get the name of the folder and put it in path
+        SHGetPathFromIDList ( pidl, path );
+
+        //free memory used
+        IMalloc * imalloc = 0;
+        if ( SUCCEEDED( SHGetMalloc ( &imalloc )) )
+        {
+            imalloc->Free ( pidl );
+            imalloc->Release ( );
+        }
+        return path;
+    }
+    return  saved_path;
+}
+std::string datetime()
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+    TCHAR buffer[80];
+    time (&rawtime);
+    timeinfo = localtime(&rawtime);
+    _tcsftime(buffer,80,"%d-%m-%Y %H-%M-%S",timeinfo);
+
+
+
+    return std::string(buffer);
+}
+
+void Snapshot::SaveJpeg(HBITMAP membit,TCHAR folder[MAX_PATH], TCHAR prefix[56], TCHAR imageFormat[56])
+{
+	_tcscpy_s(m_folder,  folder);
+	_tcscpy_s(m_prefix,  prefix);
+	if (strlen(m_folder) == 0 || strlen(m_prefix) == 0)
+		DoDialogSnapshot(m_folder, m_prefix);
+
+	TCHAR filename[MAX_PATH];
+	TCHAR expanded_filename[MAX_PATH];
+	_tcscpy_s(filename, m_folder);
+	_tcscat_s(filename, "\\");
+	_tcscat_s(filename, m_prefix); 
+
+	 time_t rawtime;
+    struct tm * timeinfo;
+    TCHAR buffer[80];
+    time (&rawtime);
+    timeinfo = localtime(&rawtime);
+    _tcsftime(buffer,80,"%d-%m-%Y %H-%M-%S",timeinfo);
+	_tcscat_s(filename, "_");
+	_tcscat_s(filename, buffer);
+	_tcscat_s(filename, imageFormat);
+	ExpandEnvironmentStrings(filename, expanded_filename, MAX_PATH);
+	using namespace Gdiplus;
+	GdiplusStartupInput gdiplusStartupInput;
+	ULONG_PTR gdiplusToken;
+	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+	
+	{		
+		Gdiplus::Bitmap bitmap(membit, NULL);
+		CLSID clsid;
+		if (strcmp(imageFormat, ".jpeg") == NULL)
+			GetEncoderClsid(L"image/jpeg", &clsid);
+		else if (strcmp(imageFormat, ".png") == NULL)
+			GetEncoderClsid(L"image/png", &clsid);
+		else if (strcmp(imageFormat, ".gif") == NULL)
+			GetEncoderClsid(L"image/gif", &clsid);
+		else if (strcmp(imageFormat, ".bmp") == NULL)
+			GetEncoderClsid(L"image/bmp", &clsid);
+
+		WCHAR wc[MAX_PATH];
+		mbstowcs(wc, expanded_filename, MAX_PATH);
+		bitmap.Save(wc, &clsid);
+	}
+	GdiplusShutdown(gdiplusToken);
+}
+
+int Snapshot::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
+{
+	using namespace Gdiplus;
+	UINT  num = 0;          // number of image encoders
+	UINT  size = 0;         // size of the image encoder array in bytes
+	ImageCodecInfo* pImageCodecInfo = NULL;
+	GetImageEncodersSize(&num, &size);
+	if(size == 0)
+		return -1;  // Failure
+	pImageCodecInfo = (ImageCodecInfo*)(malloc(size));
+	if(pImageCodecInfo == NULL)
+		return -1;  // Failure
+	GetImageEncoders(num, size, pImageCodecInfo);
+	for(UINT j = 0; j < num; ++j)
+	{
+		if( wcscmp(pImageCodecInfo[j].MimeType, format) == 0 )
+		{
+			*pClsid = pImageCodecInfo[j].Clsid;
+			free(pImageCodecInfo);
+			return j;  // Success
+		}    
+	}
+	free(pImageCodecInfo);
+	return 0;
+}
+
+Snapshot::Snapshot()
+{
+	_tcscpy_s(m_folder, "");
+	_tcscpy_s(m_prefix, "");
+}
+
+Snapshot::~Snapshot()
+{
+}
+
+int Snapshot::DoDialogSnapshot(TCHAR folder[MAX_PATH], TCHAR prefix[56])
+{
+	_tcscpy_s(m_folder,  folder);
+	_tcscpy_s(m_prefix,  prefix);
+	return DialogBoxParam(pApp->m_instance, DIALOG_MAKEINTRESOURCE(IDD_SAVEIMAGE), NULL, (DLGPROC) DlgProc, (LONG_PTR) this);
+}
+
+BOOL CALLBACK Snapshot::DlgProc(  HWND hwnd,  UINT uMsg,  
+									   WPARAM wParam, LPARAM lParam ) 
+{
+    Snapshot *_this = helper::SafeGetWindowUserData<Snapshot>(hwnd); 
+
+	switch (uMsg) {
+
+	case WM_INITDIALOG:
+		{
+            helper::SafeSetWindowUserData(hwnd, lParam);
+			_this = (Snapshot *) lParam;
+			SetDlgItemText(hwnd, IDC_FOLDER, _this->m_folder);
+			SetDlgItemText(hwnd, IDC_PREFIX, _this->m_prefix);
+			return TRUE;
+		}
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDOK:
+			{
+				UINT res= GetDlgItemText( hwnd,  IDC_FOLDER,
+					_this->m_folder, 256);
+				res= GetDlgItemText( hwnd,  IDC_PREFIX,
+					_this->m_prefix, 256);
+				EndDialog(hwnd, TRUE);
+				return TRUE;
+			}
+		case IDCANCEL:
+			EndDialog(hwnd, FALSE);
+			return TRUE;
+
+		case IDC_BROWSE:
+			_tcscpy_s(_this->m_folder,MAX_PATH ,BrowseFolder(_this->m_folder, hwnd));
+			SetDlgItemText(hwnd, IDC_FOLDER, _this->m_folder);
+			return TRUE;
+		}
+
+		break;
+	case WM_DESTROY:
+		EndDialog(hwnd, FALSE);
+		return TRUE;
+	}
+	return 0;
+}
