@@ -29,7 +29,7 @@
 #include "ClientConnection.h"
 #include "FullScreenTitleBar.h" //Added by: Lars Werner (http://lars.werner.no)
 #include "display.h"
-
+#include "ini.h"
 // Parameters for scrolling in full screen mode
 #define BUMPSCROLLBORDER 8
 #define BUMPSCROLLAMOUNTX 32
@@ -39,7 +39,7 @@ extern char sz_J2[64];
 
 void ClientConnection::saveScreenPosition()
 {
-//	if (!m_opts->m_SavePos)
+	//	if (!m_opts->m_SavePos)
 	GetWindowRect(m_hwndMain, &mainRect);
 
 	// if doubleclick Title don´t save     
@@ -47,20 +47,20 @@ void ClientConnection::saveScreenPosition()
 	MONITORINFO mi;
 	mi.cbSize = sizeof(MONITORINFO);
 	GetMonitorInfo(hMonitor, &mi);
-	
+
 	saveScreenPositionOK = (mainRect.left > mi.rcMonitor.left);
 	//saveScreenPositionOK = (mainRect.left > 0) && (mainRect.top > 0);
 }
 
 void ClientConnection::restoreScreenPosition()
 {
-//	if (!m_opts->m_SavePos)
+	//	if (!m_opts->m_SavePos)
 	if (saveScreenPositionOK)
-	  SetWindowPos(m_hwndMain, HWND_NOTOPMOST, mainRect.left, mainRect.top, mainRect.right - mainRect.left, mainRect.bottom - mainRect.top, SWP_FRAMECHANGED);
-    saveScreenPositionOK = false;
+		SetWindowPos(m_hwndMain, HWND_NOTOPMOST, mainRect.left, mainRect.top, mainRect.right - mainRect.left, mainRect.bottom - mainRect.top, SWP_FRAMECHANGED);
+	saveScreenPositionOK = false;
 }
 
-bool ClientConnection::InFullScreenMode() 
+bool ClientConnection::InFullScreenMode()
 {
 	if (m_FullScreenNotDone)
 		return !m_FullScreen;
@@ -73,19 +73,19 @@ void ClientConnection::SetFullScreenMode(bool enable)
 {
 	if (enable ^ m_opts->m_FullScreen)
 		m_fScalingDone = false;
-	
+
 	if (enable) {
 		ShowToolbar = m_opts->m_ShowToolbar;
-		m_opts->m_ShowToolbar = 0;		
-        saveScreenPosition();
+		m_opts->m_ShowToolbar = 0;
+		saveScreenPosition();
 		m_FullScreenNotDone = enable ^ m_opts->m_FullScreen;
-		m_opts->m_FullScreen = enable;		
+		m_opts->m_FullScreen = enable;
 		SizeWindow(true, true);
 		//m_FullScreen = enable;
 		m_FullScreenNotDone = false;
-		RealiseFullScreenMode();		
+		RealiseFullScreenMode();
 	}
-	else if (ShowToolbar != -1) {		
+	else if (ShowToolbar != -1) {
 		m_opts->m_ShowToolbar = ShowToolbar;
 		ShowToolbar = -1;
 		m_opts->m_FullScreen = enable;
@@ -96,9 +96,9 @@ void ClientConnection::SetFullScreenMode(bool enable)
 
 	}
 	SendFullFramebufferUpdateRequest(false);
-    RedrawWindow(m_hwndMain, NULL, NULL, RDW_FRAME | RDW_INVALIDATE);
+	RedrawWindow(m_hwndMain, NULL, NULL, RDW_FRAME | RDW_INVALIDATE);
 	if (!enable)
-	  SizeWindow(true, m_opts->m_Directx); // true, m_opts->m_SaveSize && m_opts->m_Directx
+		SizeWindow(true, m_opts->m_Directx); // true, m_opts->m_SaveSize && m_opts->m_Directx
 }
 
 // If the options have been changed other than by calling 
@@ -117,27 +117,27 @@ void ClientConnection::RealiseFullScreenMode()
 	HMONITOR hMonitor = ::MonitorFromWindow(m_hwndMain, MONITOR_DEFAULTTONEAREST);
 
 	LONG style = GetWindowLong(m_hwndMain, GWL_STYLE);
-	if (m_opts->m_FullScreen) {		
+	if (m_opts->m_FullScreen) {
 		style = GetWindowLong(m_hwndMain, GWL_STYLE);
 		style &= ~(WS_CAPTION | WS_DLGFRAME | WS_THICKFRAME);
-		style |= WS_MAXIMIZE |WS_POPUP;
+		style |= WS_MAXIMIZE | WS_POPUP;
 		SetWindowLong(m_hwndMain, GWL_STYLE, style);
 
-        // 7 May 2008 jdp
+		// 7 May 2008 jdp
 		RECT rect;
 		GetWindowRect(m_hwndMain, &rect);
-        MONITORINFO mi;
-        mi.cbSize = sizeof (MONITORINFO);
+		MONITORINFO mi;
+		mi.cbSize = sizeof(MONITORINFO);
 
-        GetMonitorInfo(hMonitor, &mi);
-        int x = mi.rcMonitor.left; 
-        int y = mi.rcMonitor.top;
-		int cx = mi.rcMonitor.right - x; 
+		GetMonitorInfo(hMonitor, &mi);
+		int x = mi.rcMonitor.left;
+		int y = mi.rcMonitor.top;
+		int cx = mi.rcMonitor.right - x;
 		int cy = mi.rcMonitor.bottom - y;
 
 		// when the remote size is bigger then 1,5 time the localscreen we use all monitors in
 		// fullscreen mode
-		if (m_opts->m_allowMonitorSpanning && !m_opts->m_showExtend){
+		if (m_opts->m_allowMonitorSpanning && !m_opts->m_showExtend) {
 			tempdisplayclass tdc;
 			tdc.Init();
 			x = 0;
@@ -147,20 +147,21 @@ void ClientConnection::RealiseFullScreenMode()
 		}
 
 		SetWindowPos(m_hwndMain, HWND_TOPMOST, x, y, cx, cy, SWP_FRAMECHANGED);
-        TitleBar.MoveToMonitor(hMonitor);
+		TitleBar.MoveToMonitor(hMonitor);
 		// adzm - 2010-07 - Extended clipboard
-		CheckMenuItem(m_hPopupMenuDisplay, ID_FULLSCREEN, MF_BYCOMMAND|MF_CHECKED);
+		CheckMenuItem(m_hPopupMenuDisplay, ID_FULLSCREEN, MF_BYCOMMAND | MF_CHECKED);
 		if (m_opts->m_ShowToolbar)
-			SetWindowPos(m_hwndcn, m_hwndTBwin,0,m_TBr.bottom,m_winwidth, m_winheight, SWP_SHOWWINDOW);
-		else  {
-			SetWindowPos(m_hwndcn, m_hwndTBwin,0,0,cx, cy, SWP_SHOWWINDOW);
-			SetWindowPos(m_hwndTBwin, NULL ,0,0,0, 0, SWP_HIDEWINDOW);
+			SetWindowPos(m_hwndcn, m_hwndTBwin, 0, m_TBr.bottom, m_winwidth, m_winheight, SWP_SHOWWINDOW);
+		else {
+			SetWindowPos(m_hwndcn, m_hwndTBwin, 0, 0, cx, cy, SWP_SHOWWINDOW);
+			SetWindowPos(m_hwndTBwin, NULL, 0, 0, 0, 0, SWP_HIDEWINDOW);
 		}
 		TitleBar.DisplayWindow(TRUE, TRUE); //Added by: Lars Werner (http://lars.werner.no)
- 		if (m_opts->m_ViewOnly)TitleBar.SetText(m_desktopName_viewonly);
+		if (m_opts->m_ViewOnly)TitleBar.SetText(m_desktopName_viewonly);
 		else TitleBar.SetText(m_desktopName); //Added by: Lars Werner (http://lars.werner.no)
 
-	} else {
+	}
+	else {
 		if (m_opts->m_ShowToolbar)
 			SetWindowPos(m_hwndcn, m_hwndTBwin, 0, m_TBr.bottom, m_winwidth, m_winheight, SWP_SHOWWINDOW);
 		else {
@@ -169,14 +170,26 @@ void ClientConnection::RealiseFullScreenMode()
 		}
 		ShowWindow(m_hwndMain, SW_NORMAL);
 		style = GetWindowLong(m_hwndMain, GWL_STYLE);
-		style &= ~(WS_MAXIMIZE | WS_POPUP);
-		style |= WS_DLGFRAME | WS_THICKFRAME | WS_CAPTION;
+		ini::iniReader config;
+		ini::IniWriter myINI(".\\config.ini");
+		bool ret = config.ReadConfig("config.ini");
+		if (ret)
+		{
+			int useTitalBar = config.ReadInt(SWC_GLOBAL, SWC_USETITALBAR, 0);
+			if (useTitalBar)
+			{
+				style &= ~(WS_MAXIMIZE | WS_POPUP);
+				style |= WS_DLGFRAME | WS_THICKFRAME | WS_CAPTION;
+			}
+			else
+				style &= ~WS_MAXIMIZE;
+		}
 		SetWindowLong(m_hwndMain, GWL_STYLE, style);
-		SetWindowPos(m_hwndMain, HWND_NOTOPMOST, 0,0,100,100, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED |SWP_NOREDRAW); //Modified by: Lars Werner (http://lars.werner.no) - Reason: Bugfix, The framework got invisible after moving, so a NCCALCSIZE needed to be called!
+		SetWindowPos(m_hwndMain, HWND_NOTOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED | SWP_NOREDRAW); //Modified by: Lars Werner (http://lars.werner.no) - Reason: Bugfix, The framework got invisible after moving, so a NCCALCSIZE needed to be called!
 		// adzm - 2010-07 - Extended clipboard
-		CheckMenuItem(m_hPopupMenuDisplay, ID_FULLSCREEN, MF_BYCOMMAND|MF_UNCHECKED);
+		CheckMenuItem(m_hPopupMenuDisplay, ID_FULLSCREEN, MF_BYCOMMAND | MF_UNCHECKED);
 		TitleBar.DisplayWindow(FALSE, TRUE); //Added by: Lars Werner (http://lars.werner.no)
-		if (m_hwndStatus)::RedrawWindow(m_hwndStatus, NULL,NULL, RDW_INVALIDATE); //Added by: Lars Werner (http://lars.werner.no) - Reason: The status window is not getting redrawn after a resize.
+		if (m_hwndStatus)::RedrawWindow(m_hwndStatus, NULL, NULL, RDW_INVALIDATE); //Added by: Lars Werner (http://lars.werner.no) - Reason: The status window is not getting redrawn after a resize.
 	}
 }
 
@@ -184,10 +197,10 @@ void ClientConnection::BorderlessMode()
 {
 	ShowWindow(m_hwndMain, SW_NORMAL);
 	LONG style = GetWindowLong(m_hwndMain, GWL_STYLE);
-	style &= ~(WS_CAPTION |WS_DLGFRAME | WS_THICKFRAME);
+	style &= ~(WS_CAPTION | WS_DLGFRAME | WS_THICKFRAME);
 	SetWindowLong(m_hwndMain, GWL_STYLE, style);
-	m_opts->m_ShowToolbar = false;	
-	SetWindowPos(m_hwndMain, HWND_NOTOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED); 
+	m_opts->m_ShowToolbar = false;
+	SetWindowPos(m_hwndMain, HWND_NOTOPMOST, 0, 0, 100, 100, SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
 
 	SetWindowPos(m_hwndcn, m_hwndTBwin, 0, 0, 100, 100, SWP_SHOWWINDOW);
 	SetWindowPos(m_hwndTBwin, NULL, 0, 0, 0, 0, SWP_HIDEWINDOW);
@@ -202,8 +215,8 @@ bool ClientConnection::BumpScroll(int x, int y)
 {
 	int dx = 0;
 	int dy = 0;
-	int rightborder = GetSystemMetrics(SM_CXSCREEN)-BUMPSCROLLBORDER;
-	int bottomborder = GetSystemMetrics(SM_CYSCREEN)-BUMPSCROLLBORDER-(m_TBr.bottom - m_TBr.top);
+	int rightborder = GetSystemMetrics(SM_CXSCREEN) - BUMPSCROLLBORDER;
+	int bottomborder = GetSystemMetrics(SM_CYSCREEN) - BUMPSCROLLBORDER - (m_TBr.bottom - m_TBr.top);
 	if (x < BUMPSCROLLBORDER)
 		dx = -BUMPSCROLLAMOUNTX * m_opts->m_scale_num / m_opts->m_scale_den;
 	if (x >= rightborder)
@@ -213,15 +226,15 @@ bool ClientConnection::BumpScroll(int x, int y)
 	if (y >= bottomborder)
 		dy = +BUMPSCROLLAMOUNTY * m_opts->m_scale_num / m_opts->m_scale_den;;
 	if (dx || dy) {
-		if (ScrollScreen(dx,dy)) {
+		if (ScrollScreen(dx, dy)) {
 			// If we haven't physically moved the cursor, artificially
 			// generate another mouse event so we keep scrolling.
 			POINT p;
 			GetCursorPos(&p);
 			if (p.x == x && p.y == y)
-				SetCursorPos(x,y);
+				SetCursorPos(x, y);
 			return true;
-		} 
+		}
 	}
 	return false;
 }

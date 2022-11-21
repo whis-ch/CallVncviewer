@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net.NetworkInformation;
-using System.Reflection.Emit;
+using System.Linq;
 using System.Runtime.InteropServices;
-using System.Security.Permissions;
-using static System.Windows.Forms.AxHost;
 
 namespace VncMiddleware
 {
@@ -17,57 +14,80 @@ namespace VncMiddleware
         /// </summary>
         private string _IniFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.ini");
 
+        ///// <summary>
+        ///// process object
+        ///// </summary>
         private Process _MyProcess { get; set; }
 
         /// <summary>
-        /// Process handle
+        /// process handle
         /// </summary>
         private IntPtr _ProcessHandle { get; set; }
 
         /// <summary>
-        /// Process file path
+        /// process file path
         /// </summary>
-        private string _ProcessVncViewerPath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vncviwer.exe");
+        private string _ProcessVncViewerPath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vncviewer.exe");
 
         /// <inheritdoc/>
         public bool Connected { get; set; } = false;
+
+        /// <inheritdoc/>
+        public IntPtr MianWindowHandle { get; set; }
         #endregion
 
         #region --Public method--
         /// <inheritdoc/>
         public bool StartProcess(string processName)
         {
+            bool flag = false;
             string tmpProcessFileName = string.Empty;
             if (!string.IsNullOrWhiteSpace(processName) && !File.Exists(processName))
-                return false;
+                return flag;
             if (string.IsNullOrWhiteSpace(processName))
+            {
+                if (!File.Exists(this._ProcessVncViewerPath))
+                {
+                    throw new FileNotFoundException($"this file path:{this._ProcessVncViewerPath} was not found");
+                }
                 tmpProcessFileName = this._ProcessVncViewerPath;
+            }
             else
                 tmpProcessFileName = processName;
-            this._MyProcess = new Process();
-            this._MyProcess.StartInfo.FileName = tmpProcessFileName;
-            //this._MyProcess.StartInfo.Arguments = arguments;
-            this._MyProcess.StartInfo.WorkingDirectory = "";
-            this._MyProcess.StartInfo.UseShellExecute = false;
-            this._MyProcess.StartInfo.CreateNoWindow = true;
-            this._MyProcess.StartInfo.RedirectStandardInput = true;
-            this._MyProcess.StartInfo.RedirectStandardOutput = true;
-            this._MyProcess.StartInfo.RedirectStandardError = true;
-            this._MyProcess.StartInfo.ErrorDialog = false;
-            this._MyProcess.ErrorDataReceived += Process_ErrorDataReceived;
-            this._MyProcess.EnableRaisingEvents = true;
-            this._MyProcess.Exited += Process_Exited;
-            if (this._MyProcess.Start())
+
+            this.KillProcess(tmpProcessFileName);
+            _MyProcess = new Process();
+            _MyProcess.StartInfo.FileName = tmpProcessFileName;
+            //_MyProcess.StartInfo.Arguments = arguments;
+            _MyProcess.StartInfo.WorkingDirectory = "";
+            _MyProcess.StartInfo.UseShellExecute = false;
+            _MyProcess.StartInfo.CreateNoWindow = true;
+            _MyProcess.StartInfo.RedirectStandardInput = true;
+            _MyProcess.StartInfo.RedirectStandardOutput = true;
+            _MyProcess.StartInfo.RedirectStandardError = true;
+            _MyProcess.StartInfo.ErrorDialog = false;
+            _MyProcess.ErrorDataReceived += Process_ErrorDataReceived;
+            if (_MyProcess.Start())
             {
-                this._ProcessHandle = this._MyProcess.Handle;
+                _MyProcess.WaitForInputIdle();
+                _MyProcess.EnableRaisingEvents = true;
+                _MyProcess.Exited += Process_Exited;
+                this._ProcessHandle = _MyProcess.Handle;
+                this.MianWindowHandle = _MyProcess.MainWindowHandle;
+                this.Connected = true;
+                flag = true;
             }
-            return true;
+            return flag;
         }
 
         /// <inheritdoc/>
         public void CloseProcess()
         {
-            this._MyProcess?.Kill();
+            if (this._MyProcess != null && !this._MyProcess.HasExited)
+            {
+                this._MyProcess.Kill();
+            }
+            this._MyProcess = null;
         }
 
         /// <inheritdoc/>
@@ -75,8 +95,26 @@ namespace VncMiddleware
         {
             if (IniUtil.ExistFile(this._IniFilePath))
             {
-                //IniUtil
+                string key = IniSectionKey.DicSectionkeys.Where(x => x.Value.Contains(title)).Select(y => y.Key).FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    IniUtil.WriteValue(key, title, message, this._IniFilePath);
+                }
             }
+        }
+
+        /// <inheritdoc/>
+        public T GetConfigurationValue<T>(string title)
+        {
+            if (IniUtil.ExistFile(this._IniFilePath))
+            {
+                string key = IniSectionKey.DicSectionkeys.Where(x => x.Value.Contains(title)).Select(y => y.Key).FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    return IniUtil.ReadValue<T>(key, title, this._IniFilePath);
+                }
+            }
+            return default;
         }
 
         /// <inheritdoc/>
@@ -84,14 +122,15 @@ namespace VncMiddleware
         {
             if (IsWindow(this._ProcessHandle))
             {
-                this.SendMessage("scale", scale.ToString());
+                this.SendMessage("Key_NPer", scale.ToString());
             }
         }
 
         /// <inheritdoc/>
         public void SetTitleBarVisible(bool visible)
         {
-            //IniUtil
+            //..to do
+            //this.SetConfiguration(IniSectionKey.Key_TitleBar, visible ? "1" : "0");
         }
 
         /// <inheritdoc/>
@@ -99,7 +138,7 @@ namespace VncMiddleware
         {
             if (IsWindow(this._ProcessHandle))
             {
-                this.SendMessage("viewonly", viewOnly ? "1" : "0");
+                this.SendMessage("ViewOnly", viewOnly ? "1" : "0");
             }
         }
         #endregion
@@ -114,7 +153,7 @@ namespace VncMiddleware
         {
             SendObject sendObject = new SendObject();
             sendObject.Title = title;
-            sendObject.Message = textContent;
+            sendObject.ContentText = textContent;
             string content = JsonUtil.ObjectToJson(sendObject);
             byte[] arr = System.Text.Encoding.Default.GetBytes(content);
             int len = arr.Length;
@@ -124,12 +163,29 @@ namespace VncMiddleware
             cdata.cData = len + 1;
             SendMessage(this._ProcessHandle, _WM_COPYDATA, 0, ref cdata);
         }
+
+        /// <summary>
+        /// kill process
+        /// </summary>
+        /// <param name="filePath">file path</param>
+        private void KillProcess(string filePath)
+        {
+            Process[] processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(filePath));
+            if (processes != null && processes.Length > 0)
+            {
+                foreach (Process item in processes)
+                {
+                    item.Kill();
+                }
+            }
+            this.CloseProcess();
+        }
         #endregion
 
         #region --Event handler--
         private void Process_Exited(object sender, EventArgs e)
         {
-            this._MyProcess = null;
+            //this._MyProcess = null;
             this.Connected = false;
             this._ProcessHandle = IntPtr.Zero;
         }
@@ -140,7 +196,7 @@ namespace VncMiddleware
         #endregion
 
         #region --Win32--
-        private const int _DwDataLength = 1000;
+        private const int _DwDataLength = 1024;
         private const int _WM_COPYDATA = 0x004A;
         public struct COPYDATASTRUCT
         {
@@ -155,12 +211,15 @@ namespace VncMiddleware
 
         [DllImport("User32.dll")]
         public static extern bool IsWindow(IntPtr hWnd);
+
+        [DllImport("User32.dll")]
+        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
         #endregion 
 
         public struct SendObject
         {
             public string Title { get; set; }
-            public string Message { get; set; }
+            public string ContentText { get; set; }
         }
     }
 }

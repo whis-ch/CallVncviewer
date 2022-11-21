@@ -1,4 +1,6 @@
-﻿namespace VncMiddleware
+﻿using System;
+
+namespace VncMiddleware
 {
     /// <summary>
     /// vncviewer operations
@@ -6,18 +8,24 @@
     public interface IRemoteViewer
     {
         /// <summary>
+        /// process main window handle
+        /// </summary>
+        IntPtr MianWindowHandle { get; }
+
+        /// <summary>
         /// vncviewer connect status
         /// </summary>
         bool Connected { get; set; }
 
         /// <summary>
-        /// Use process start vncviewer.exe
+        /// use process start vncviewer.exe
         /// </summary>
+        /// <param name="processName">process name,this value can be null</param>
         /// <returns>start result</returns>
-        bool StartProcess(string processName);
+        bool StartProcess(string processName = null);
 
         /// <summary>
-        /// Use process close vncviewer.exe
+        /// use process close vncviewer.exe
         /// </summary>
         void CloseProcess();
 
@@ -45,5 +53,13 @@
         /// <param name="title">header</param>
         /// <param name="message"></param>
         void SetConfiguration(string title, string message);
+
+        /// <summary>
+        /// get ini file configuration info
+        /// </summary>
+        /// <typeparam name="T">convert type</typeparam>
+        /// <param name="title">ini file key</param>
+        /// <returns>value corresponding to key</returns>
+        T GetConfigurationValue<T>(string title);
     }
 }

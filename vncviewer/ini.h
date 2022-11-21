@@ -18,6 +18,7 @@
 #define SWC_HOST "proxyhost"
 #define SWC_USEPROXY "m_fUseProxy"
 #define SWC_WINDOWSSIZE "windowsSize"
+#define SWC_USETITALBAR "useTitalBar"
 
 #define SWC_LISTEN "LISTEN_MODE"
 #define SWC_LISTENPORT "listenport"
@@ -101,7 +102,7 @@ namespace ini
 		{
 		}
 		//filename 文件绝对路径
-		bool ReadConfig(const std::string & filename)
+		bool ReadConfig(const std::string& filename)
 		{
 			settings_.clear();
 			std::ifstream infile(filename.c_str());//构造默认调用open,所以可以不调用open
@@ -233,7 +234,7 @@ namespace ini
 				return false;
 			}
 		}
-		void Trim(std::string & str)
+		void Trim(std::string& str)
 		{
 			if (str.empty())
 			{
@@ -259,7 +260,7 @@ namespace ini
 			end_pos = i;
 			str = str.substr(start_pos, end_pos - start_pos + 1);
 		}
-		bool AnalyseLine(const std::string & line, std::string& section, std::string & key, std::string & value)
+		bool AnalyseLine(const std::string& line, std::string& section, std::string& key, std::string& value)
 		{
 			if (line.empty())
 				return false;
@@ -336,7 +337,7 @@ namespace communication
 	{
 		char szMsg[1024];
 	};
-	static const ULONG_PTR CUSTOM_TYPE = 1008611;// 定义消息常量
+	static const ULONG_PTR CUSTOM_TYPE = 1024;// 定义消息常量
 	class communicationToOthers
 	{
 	public:
@@ -433,79 +434,75 @@ namespace communication
 						if (values.size() == 2)
 							long ad = ::SendMessage(hWND1, WM_SYSKEYUP, atoi(values.at(0).c_str()), atoi(values.at(1).c_str()));
 					}
-					else
+					else if (strcmp(recvTitle.c_str(), SWC_PER) == 0)
 					{
-						if (strcmp(recvTitle.c_str(), SWC_PER) == 0)
+						std::vector<std::string> values;
+						Stringsplit(recvContentText, ".", values);
+						if (values.size() == 4)
+							SetWindowPos(hWND1, HWND_TOP, atoi(values.at(0).c_str()), atoi(values.at(1).c_str()), atoi(values.at(2).c_str()), atoi(values.at(3).c_str()), SWP_SHOWWINDOW);
+						else
 						{
-							std::vector<std::string> values;
-							Stringsplit(recvContentText, ".", values);
-							if (values.size() == 4)
-								SetWindowPos(hWND1, HWND_TOP, atoi(values.at(0).c_str()), atoi(values.at(1).c_str()), atoi(values.at(2).c_str()), atoi(values.at(3).c_str()), SWP_SHOWWINDOW);
+							ini::iniReader config;
+							ini::IniWriter myINI(".\\config.ini");
+							bool ret = config.ReadConfig("config.ini");
+							if (ret == false)
+							{
+								return;
+							}
+							if (config.ReadString(SWC_GLOBAL, SWC_WINDOWSSIZE, "").size() <= 0)
+							{
+								RECT rect;
+								if (GetWindowRect(hWND1, &rect))
+								{
+									int width = rect.right - rect.left;
+									int height = rect.bottom - rect.top;
+									std::stringstream ss;
+									ss << rect.left;
+									std::string str1 = ss.str();
+									ss.clear();
+									ss.str("");
+									ss << rect.top;
+									std::string str2 = ss.str();
+									ss.clear();
+									ss.str("");
+									ss << width;
+									std::string str3 = ss.str();
+									ss.clear();
+									ss.str("");
+									ss << height;
+									std::string str4 = ss.str();
+									std::string str = str1 + "." + str2 + "." + str3 + "." + str4;
+									myINI.WriteString(SWC_GLOBAL, SWC_WINDOWSSIZE, str.c_str());
+									int totalWidth = rect.right + rect.left;
+									int totalHeight = rect.bottom + rect.top;
+									int newLeft = (totalWidth - atoi(recvContentText.c_str()) * width / 100) / 2;
+									int newTop = (totalHeight - atoi(recvContentText.c_str()) * height / 100) / 2;
+									SetWindowPos(hWND1, HWND_TOP, newLeft, newTop, atoi(recvContentText.c_str()) * width / 100, atoi(recvContentText.c_str()) * height / 100, SWP_SHOWWINDOW);
+								}
+							}
 							else
 							{
-								ini::iniReader config;
-								ini::IniWriter myINI(".\\config.ini");
-								bool ret = config.ReadConfig("config.ini");
-								if (ret == false)
+								std::string str = config.ReadString(SWC_GLOBAL, SWC_WINDOWSSIZE, "");
+								std::vector<std::string> rect;
+								Stringsplit(str, ".", rect);
+								if (rect.size() == 4)
 								{
-									return;
-								}
-								if (config.ReadString(SWC_GLOBAL, SWC_WINDOWSSIZE, "").size() <= 0)
-								{
-									RECT rect;
-									if (GetWindowRect(hWND1, &rect))
-									{
-										int width = rect.right - rect.left;
-										int height = rect.bottom - rect.top;
-										std::stringstream ss;
-										ss << rect.left;
-										std::string str1 = ss.str();
-										ss.clear();
-										ss.str("");
-										ss << rect.top;
-										std::string str2 = ss.str();
-										ss.clear();
-										ss.str("");
-										ss << width;
-										std::string str3 = ss.str();
-										ss.clear();
-										ss.str("");
-										ss << height;
-										std::string str4 = ss.str();
-										std::string str = str1 + "." + str2 + "." + str3 + "." + str4;
-										myINI.WriteString(SWC_GLOBAL, SWC_WINDOWSSIZE, str.c_str());
-										int totalWidth = rect.right + rect.left;
-										int totalHeight = rect.bottom + rect.top;
-										int newLeft = (totalWidth - atoi(recvContentText.c_str())*width / 100) / 2;
-										int newTop = (totalHeight - atoi(recvContentText.c_str())*height / 100) / 2;
-										SetWindowPos(hWND1, HWND_TOP, newLeft, newTop, atoi(recvContentText.c_str())*width / 100, atoi(recvContentText.c_str())*height / 100, SWP_SHOWWINDOW);
-									}
-								}
-								else
-								{
-									std::string str = config.ReadString(SWC_GLOBAL, SWC_WINDOWSSIZE, "");
-									std::vector<std::string> rect;
-									Stringsplit(str, ".", rect);
-									if (rect.size() == 4)
-									{
-										int totalWidth = 2 * atoi(rect[0].c_str()) + atoi(rect[2].c_str());
-										int totalHeight = 2 * atoi(rect[1].c_str()) + atoi(rect[3].c_str());
-										int newLeft = (totalWidth - atoi(recvContentText.c_str())*atoi(rect[2].c_str()) / 100) / 2;
-										int newTop = (totalHeight - atoi(recvContentText.c_str())*atoi(rect[3].c_str()) / 100) / 2;
-										SetWindowPos(hWND1, HWND_TOP, newLeft, newTop, atoi(recvContentText.c_str())*atoi(rect[2].c_str()) / 100, atoi(recvContentText.c_str())*atoi(rect[3].c_str()) / 100, SWP_SHOWWINDOW);
-									}
+									int totalWidth = 2 * atoi(rect[0].c_str()) + atoi(rect[2].c_str());
+									int totalHeight = 2 * atoi(rect[1].c_str()) + atoi(rect[3].c_str());
+									int newLeft = (totalWidth - atoi(recvContentText.c_str()) * atoi(rect[2].c_str()) / 100) / 2;
+									int newTop = (totalHeight - atoi(recvContentText.c_str()) * atoi(rect[3].c_str()) / 100) / 2;
+									SetWindowPos(hWND1, HWND_TOP, newLeft, newTop, atoi(recvContentText.c_str()) * atoi(rect[2].c_str()) / 100, atoi(recvContentText.c_str()) * atoi(rect[3].c_str()) / 100, SWP_SHOWWINDOW);
 								}
 							}
 						}
-						else if (strcmp(recvTitle.c_str(), SWC_VIEWONLY) == 0)
-						{	
-							EnableWindow(hWND1, atoi(recvContentText.c_str()));
-						} 
-						
+					}
+					else if (strcmp(recvTitle.c_str(), SWC_VIEWONLY) == 0)
+					{
+						EnableWindow(hWND1, atoi(recvContentText.c_str()));
 					}
 				}
 			}
-			catch (json::parse_error &ex)
+			catch (json::parse_error& ex)
 			{
 				std::string errMess = ex.what();
 			}

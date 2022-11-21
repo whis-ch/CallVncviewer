@@ -11,6 +11,7 @@ namespace RemoteView
         [STAThread]
         static void Main()
         {
+            GlobalException.AddGlobalObserve();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new Form1());

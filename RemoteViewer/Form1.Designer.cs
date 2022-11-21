@@ -28,26 +28,24 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.RemoteCtl = new VncMiddleware.RemoteControl();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.SuspendLayout();
             // 
-            // RemoteCtl
+            // panel1
             // 
-            this.RemoteCtl.BackColor = System.Drawing.Color.Black;
-            this.RemoteCtl.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.RemoteCtl.Font = new System.Drawing.Font("微软雅黑", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Pixel, ((byte)(134)));
-            this.RemoteCtl.Location = new System.Drawing.Point(0, 0);
-            this.RemoteCtl.Margin = new System.Windows.Forms.Padding(0);
-            this.RemoteCtl.Name = "RemoteCtl";
-            this.RemoteCtl.Size = new System.Drawing.Size(998, 538);
-            this.RemoteCtl.TabIndex = 0;
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panel1.Location = new System.Drawing.Point(0, 0);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(1072, 645);
+            this.panel1.TabIndex = 0;
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(998, 538);
-            this.Controls.Add(this.RemoteCtl);
+            this.ClientSize = new System.Drawing.Size(1072, 645);
+            this.Controls.Add(this.panel1);
+            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.Name = "Form1";
             this.Text = "Form1";
             this.ResumeLayout(false);
@@ -56,7 +54,7 @@
 
         #endregion
 
-        private VncMiddleware.RemoteControl RemoteCtl;
+        private System.Windows.Forms.Panel panel1;
     }
 }
 
