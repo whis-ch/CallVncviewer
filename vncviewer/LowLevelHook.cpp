@@ -140,7 +140,7 @@ BOOL LowLevelHook::Release()
 	*/
 
 	// adzm 2009-09-25 - Post a message to the thread to terminate
-	if (g_hThread) {
+	if (g_hThread && g_hThread != NULL) {
 		PostThreadMessage(g_nThreadID, WM_USER+1, 0, 0);
 		g_nThreadID = 0;
 		CloseHandle(g_hThread);

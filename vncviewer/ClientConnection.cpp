@@ -318,7 +318,7 @@ ClientConnection::ClientConnection(VNCviewerApp* pApp, SOCKET sock)
 		_tcscpy_s(m_host, sz_L1);
 		m_port = 0;
 	};
-	}
+}
 
 // adzm - 2010-07 - Extended clipboard
 ClientConnection::ClientConnection(VNCviewerApp * pApp, LPTSTR host, int port)
@@ -7575,11 +7575,11 @@ void ClientConnection::GTGBS_CreateDisplay()
 //
 LRESULT CALLBACK ClientConnection::GTGBS_ShowStatusWindow(LPVOID lpParameter)
 {
-	ClientConnection* _this = (ClientConnection*)lpParameter;
+	//ClientConnection* _this = (ClientConnection*)lpParameter;
 
-	_this->m_fStatusOpen = true;
+	//_this->m_fStatusOpen = true;
 	//DialogBoxParam(_this->m_pApp->m_instance,MAKEINTRESOURCE(IDD_STATUS),NULL,(DLGPROC)ClientConnection::GTGBS_StatusProc,(LONG_PTR)_this);//开启等待连接界面
-	// _this->m_fStatusOpen = false;
+	//_this->m_fStatusOpen = false;
 	return 0;
 }
 
@@ -8843,11 +8843,8 @@ LRESULT CALLBACK ClientConnection::WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, 
 		_tcscpy_s(_this->m_opts->m_prefix, snapshot.getPrefix());
 	}
 	return 0;
-
 	} // end of iMsg switch
-
 	//return DefWindowProc(hwnd, iMsg, wParam, lParam);
-
 	// Process asynchronous FileTransfer in this thread
 	if ((iMsg == FileTransferSendPacketMessage) && (_this->m_pFileTransfer != NULL))
 	{
